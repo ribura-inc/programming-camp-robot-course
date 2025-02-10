@@ -7,8 +7,8 @@ AIN1 = DigitalOutputDevice(14)
 AIN2 = DigitalOutputDevice(15)
 PWMA = PWMOutputDevice(18)
 
-BIN1 = DigitalOutputDevice(25)
-BIN2 = DigitalOutputDevice(8)
+BIN1 = DigitalOutputDevice(8)
+BIN2 = DigitalOutputDevice(25)
 PWMB = PWMOutputDevice(7)
 
 # デューティ比（速度設定 0~1.0）
