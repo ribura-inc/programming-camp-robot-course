@@ -1,8 +1,9 @@
+import random
+import time
+
 import cv2
 import numpy as np
-import time
-import random
-from gpiozero import PWMOutputDevice, DigitalOutputDevice, AngularServo
+from gpiozero import AngularServo, DigitalOutputDevice, PWMOutputDevice
 from gpiozero.pins.pigpio import PiGPIOFactory
 
 # 定数定義
@@ -25,24 +26,25 @@ BIN2_PIN = 25
 PWMB_PIN = 7
 
 # 動作パラメータ
-MOVE_SPEED = 0.8            # 前進時の基本速度
-ROTATE_SPEED = 0.7          # 旋回時の速度
-CORRECTION_FACTOR = 0.1     # 画面中心からのずれ補正係数
+MOVE_SPEED = 0.8  # 前進時の基本速度
+ROTATE_SPEED = 0.7  # 旋回時の速度
+CORRECTION_FACTOR = 0.1  # 画面中心からのずれ補正係数
 
 # 物体検出パラメータ
-COLOR_THRESHOLD = 0.0005              # 色検出の最小面積比率
-CLOSE_DISTANCE_THRESHOLD = 0.0020      # タイヤ出力を変える
-LAUNCH_DETECTION_DURATION = 1.5     # 発射前に連続検出する必要がある秒数
-CAN_LAUNCH_DISTANCE_THRESHOLD = 0.03 # 発射可能と判断する面積比率
+COLOR_THRESHOLD = 0.0005  # 色検出の最小面積比率
+CLOSE_DISTANCE_THRESHOLD = 0.0020  # タイヤ出力を変える
+LAUNCH_DETECTION_DURATION = 1.5  # 発射前に連続検出する必要がある秒数
+CAN_LAUNCH_DISTANCE_THRESHOLD = 0.03  # 発射可能と判断する面積比率
 
 # 探索行動パラメータ
 SEARCH_ROTATE_DURATION = 1.0  # 旋回モードの継続時間
-SEARCH_FORWARD_DURATION = 1.0 # 前進モードの継続時間
-SLEEP_INTERVAL = 0.01         # ループ間の待機時間
+SEARCH_FORWARD_DURATION = 1.0  # 前進モードの継続時間
+SLEEP_INTERVAL = 0.01  # ループ間の待機時間
 
 # 色検出用HSVレンジ
-LOWER_HSV = np.array([15, 220, 120])   # オレンジ色の下限
+LOWER_HSV = np.array([15, 220, 120])  # オレンジ色の下限
 UPPER_HSV = np.array([25, 255, 255])  # オレンジ色の上限
+
 
 class ColorObjectTracker:
     """カメラ画像から色物体を追尾し、接近時に射出するクラス.
@@ -98,7 +100,7 @@ class ColorObjectTracker:
 
     def set_motor_speed(self, left_speed: float, right_speed: float) -> None:
         """左右モーターの速度を設定する.
-        
+
         Args:
             left_speed: 左モーターの速度（0～1）
             right_speed: 右モーターの速度（0～1）
@@ -123,9 +125,9 @@ class ColorObjectTracker:
 
     def detect_object(self) -> tuple[bool, tuple[int, int] | None, float, np.ndarray]:
         """カメラ画像から物体を検出する.
-        
+
         HSV変換後、指定色のマスク作成と輪郭抽出により最大領域の面積比率と重心を算出する.
-        
+
         Returns:
             detected: 物体が検出されたか否か.
             centroid: 物体の重心 (x, y) または None.
@@ -159,9 +161,10 @@ class ColorObjectTracker:
             return False, None, area_ratio, frame
         centroid_x = int(M["m10"] / M["m00"])
         centroid_y = int(M["m01"] / M["m00"])
-        print(f"物体が検出されました。重心: ({centroid_x}, {centroid_y}), 面積比率: {area_ratio:.2f}")
+        print(
+            f"物体が検出されました。重心: ({centroid_x}, {centroid_y}), 面積比率: {area_ratio:.2f}"
+        )
         return True, (centroid_x, centroid_y), area_ratio, frame
-
 
     def run(self) -> None:
         """メインループを実行する."""
@@ -180,16 +183,21 @@ class ColorObjectTracker:
                     if area_ratio > CLOSE_DISTANCE_THRESHOLD:
                         #  画面中心からのずれを計算し、左右の出力を補正
                         frame_center_x = frame.shape[1] / 2
-                        error = (centroid[0] - frame_center_x) / frame_center_x  # -1～1の範囲
+                        error = (
+                            centroid[0] - frame_center_x
+                        ) / frame_center_x  # -1～1の範囲
                         left_speed = self.base_speed * (1 + CORRECTION_FACTOR * error)
                         right_speed = self.base_speed * (1 - CORRECTION_FACTOR * error)
                     else:
                         left_speed = self.base_speed
-                        right_speed = self.base_speed 
+                        right_speed = self.base_speed
                     self.set_motor_speed(left_speed, right_speed)
 
                     # 連続検出時間が規定を超えたら射出
-                    if area_ratio > CAN_LAUNCH_DISTANCE_THRESHOLD and (current_time - self.state_start_time >= LAUNCH_DETECTION_DURATION):
+                    if area_ratio > CAN_LAUNCH_DISTANCE_THRESHOLD and (
+                        current_time - self.state_start_time
+                        >= LAUNCH_DETECTION_DURATION
+                    ):
                         print("物体に接近。発射します。")
                         self.stop()
                         self.launch()
@@ -216,13 +224,19 @@ class ColorObjectTracker:
                             self.BIN2.off()
                         self.PWMA.value = self.rotate_speed
                         self.PWMB.value = self.rotate_speed
-                        if current_time - self.state_start_time >= SEARCH_ROTATE_DURATION:
+                        if (
+                            current_time - self.state_start_time
+                            >= SEARCH_ROTATE_DURATION
+                        ):
                             self.state = "search_forward"
                             self.state_start_time = current_time
                     elif self.state == "search_forward":
                         # 前進しながら探索
                         self.set_motor_speed(self.base_speed, self.base_speed)
-                        if current_time - self.state_start_time >= SEARCH_FORWARD_DURATION:
+                        if (
+                            current_time - self.state_start_time
+                            >= SEARCH_FORWARD_DURATION
+                        ):
                             self.state = "search_rotate"
                             self.state_start_time = current_time
                             self.rotation_direction = random.choice([1, -1])

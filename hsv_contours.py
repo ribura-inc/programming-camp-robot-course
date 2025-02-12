@@ -4,9 +4,10 @@ import numpy as np
 # 定数定義
 CAMERA_INDEX = 0
 
+
 def detect_objects() -> None:
     """画像から黄色い物体を検出し、結果画像を保存するスクリプト.
-    
+
     Args:
       image_path: 処理対象の画像のパス.
     """
@@ -40,6 +41,7 @@ def detect_objects() -> None:
 
     # 画像を保存
     cv2.imwrite("detected_objects.png", result)
+
 
 if __name__ == "__main__":
     detect_objects()

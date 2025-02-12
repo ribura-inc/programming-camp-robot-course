@@ -1,6 +1,6 @@
-from gpiozero import PWMOutputDevice, DigitalOutputDevice
 from time import sleep
 
+from gpiozero import DigitalOutputDevice, PWMOutputDevice
 
 # モータードライバのピン設定
 AIN1 = DigitalOutputDevice(14)
@@ -14,6 +14,7 @@ PWMB = PWMOutputDevice(7)
 # デューティ比（速度設定 0~1.0）
 val = 0.6
 
+
 # 前進する関数
 def func_forward():
     print("前進します")
@@ -23,6 +24,7 @@ def func_forward():
     BIN2.on()
     PWMA.value = val
     PWMB.value = val
+
 
 # 後進する関数
 def func_back():
@@ -34,6 +36,7 @@ def func_back():
     PWMA.value = val
     PWMB.value = val
 
+
 # 右回転する関数
 def func_right():
     print("右に回転します")
@@ -43,6 +46,7 @@ def func_right():
     BIN2.off()
     PWMA.value = val
     PWMB.value = val
+
 
 # 左回転する関数
 def func_left():
@@ -54,6 +58,7 @@ def func_left():
     PWMA.value = val
     PWMB.value = val
 
+
 # ブレーキする関数
 def func_brake():
     print("ブレーキをかけます")
@@ -63,6 +68,7 @@ def func_brake():
     BIN2.on()
     PWMA.value = 0
     PWMB.value = 0
+
 
 # メインプログラム
 try:
