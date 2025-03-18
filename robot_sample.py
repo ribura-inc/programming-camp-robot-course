@@ -1,5 +1,5 @@
 import random
-from time import sleep
+import time
 
 import cv2
 import numpy as np
@@ -18,145 +18,151 @@ SERVO_FRAME_WIDTH = 1 / 50
 AIN1_PIN = 14
 AIN2_PIN = 15
 PWMA_PIN = 18
-BIN1_PIN = 25
-BIN2_PIN = 8
+BIN1_PIN = 8
+BIN2_PIN = 25
 PWMB_PIN = 7
 
-MOVE_SPEED = 0.8
-ROTATE_SPEED = 0.7
-SEARCH_ATTEMPTS = 3
-COLOR_THRESHOLD = 0.05
-CLOSE_DISTANCE_THRESHOLD = 0.2
-SLEEP_INTERVAL = 0.1
+LOWER_HSV = np.array([30, 100, 100])  # TODO: 適切な値に変更
+UPPER_HSV = np.array([60, 255, 255])  # TODO: 適切な値に変更
 
-LOWER_COLOR1 = np.array([90, 100, 100])  # 水色の下限
-UPPER_COLOR1 = np.array([120, 255, 255])  # 青色の上限
+# モータードライバのピン設定
+AIN1 = DigitalOutputDevice(AIN1_PIN)
+AIN2 = DigitalOutputDevice(AIN2_PIN)
+PWMA = PWMOutputDevice(PWMA_PIN)
+BIN1 = DigitalOutputDevice(BIN1_PIN)
+BIN2 = DigitalOutputDevice(BIN2_PIN)
+PWMB = PWMOutputDevice(PWMB_PIN)
+
+# サーボモーターの設定（射出用）
+factory = PiGPIOFactory()
+servo = AngularServo(
+    SERVO_PIN,
+    min_angle=SERVO_MIN_ANGLE,
+    max_angle=SERVO_MAX_ANGLE,
+    initial_angle=SERVO_MAX_ANGLE,
+    min_pulse_width=SERVO_MIN_PULSE,
+    max_pulse_width=SERVO_MAX_PULSE,
+    frame_width=SERVO_FRAME_WIDTH,
+    pin_factory=factory,
+)
+servo.angle = SERVO_MAX_ANGLE
+
+# カメラ初期化
+cap = cv2.VideoCapture(CAMERA_INDEX)
+
+# 状態管理用変数
+state = "search_rotate"
+state_start_time = time.time()
+rotation_direction = random.choice([1, -1])
 
 
-class ColorObjectTracker:
-    def __init__(self):
-        # カメラ初期化
-        self.cap = cv2.VideoCapture(CAMERA_INDEX)
+def launch():
+    """射出動作を実施する."""
+    print("launch")
+    servo.angle = SERVO_MIN_ANGLE
+    time.sleep(0.2)
+    print("reset")
+    servo.angle = SERVO_MAX_ANGLE
+    time.sleep(0.1)
 
-        # モータードライバのピン設定
-        self.AIN1 = DigitalOutputDevice(AIN1_PIN)
-        self.AIN2 = DigitalOutputDevice(AIN2_PIN)
-        self.PWMA = PWMOutputDevice(PWMA_PIN)
-        self.BIN1 = DigitalOutputDevice(BIN1_PIN)
-        self.BIN2 = DigitalOutputDevice(BIN2_PIN)
-        self.PWMB = PWMOutputDevice(PWMB_PIN)
 
-        # サーボモーターの設定（ロケットランチャー用）
-        factory = PiGPIOFactory()
-        self.servo = AngularServo(
-            SERVO_PIN,
-            min_angle=SERVO_MIN_ANGLE,
-            max_angle=SERVO_MAX_ANGLE,
-            initial_angle=SERVO_MAX_ANGLE,
-            min_pulse_width=SERVO_MIN_PULSE,
-            max_pulse_width=SERVO_MAX_PULSE,
-            frame_width=SERVO_FRAME_WIDTH,
-            pin_factory=factory,
-        )
-        self.servo.angle = SERVO_MAX_ANGLE
+def set_motor_speed(left_speed: float, right_speed: float):
+    """左右モーターの速度を設定する."""
+    AIN1.off()
+    AIN2.on()
+    BIN1.off()
+    BIN2.on()
+    PWMA.value = max(0, min(1, left_speed))
+    PWMB.value = max(0, min(1, right_speed))
 
-        # 速度設定
-        self.speed = MOVE_SPEED
-        self.rotate_speed = ROTATE_SPEED
 
-    def move_forward(self):
-        self.AIN1.off()
-        self.AIN2.on()
-        self.BIN1.off()
-        self.BIN2.on()
-        self.PWMA.value = self.speed
-        self.PWMB.value = self.speed
+def stop():
+    """モーターを停止する."""
+    AIN1.on()
+    AIN2.on()
+    BIN1.on()
+    BIN2.on()
+    PWMA.value = 0
+    PWMB.value = 0
 
-    def rotate_left(self):
-        self.AIN1.on()
-        self.AIN2.off()
-        self.BIN1.off()
-        self.BIN2.on()
-        self.PWMA.value = self.rotate_speed
-        self.PWMB.value = self.rotate_speed
 
-    def rotate_right(self):
-        self.AIN1.off()
-        self.AIN2.on()
-        self.BIN1.on()
-        self.BIN2.off()
-        self.PWMA.value = self.rotate_speed
-        self.PWMB.value = self.rotate_speed
+def detect_object():
+    """カメラ画像から物体を検出する."""
+    ret, frame = cap.read()
+    if not ret:
+        return False, None, 0.0, np.array([])
 
-    def stop(self):
-        self.AIN1.on()
-        self.AIN2.on()
-        self.BIN1.on()
-        self.BIN2.on()
-        self.PWMA.value = 0
-        self.PWMB.value = 0
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, LOWER_HSV, UPPER_HSV)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return False, None, 0.0, frame
 
-    def detect_color_object(self):
-        ret, frame = self.cap.read()
-        if not ret:
-            return False
+    largest_contour = max(contours, key=cv2.contourArea)
+    area = cv2.contourArea(largest_contour)
+    frame_area = frame.shape[0] * frame.shape[1]
+    area_ratio = area / frame_area
 
-        # HSV変換
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv, LOWER_COLOR1, UPPER_COLOR1)
+    M = cv2.moments(largest_contour)
+    if M["m00"] == 0:
+        return False, None, area_ratio, frame
+    centroid_x = int(M["m10"] / M["m00"])
+    centroid_y = int(M["m01"] / M["m00"])
+    return True, (centroid_x, centroid_y), area_ratio, frame
 
-        # 色の占有率を計算
-        color_ratio = np.sum(mask > 0) / (frame.shape[0] * frame.shape[1])
 
-        return color_ratio > COLOR_THRESHOLD
+def run():
+    """メインループを実行する."""
+    global state, state_start_time, rotation_direction
+    try:
+        while True:
+            current_time = time.time()
+            detected, centroid, area_ratio, frame = detect_object()
 
-    def launch(self):
-        print("launch")
-        self.servo.angle = SERVO_MIN_ANGLE
-        sleep(0.2)
-
-        print("reset")
-        self.servo.angle = SERVO_MAX_ANGLE
-        sleep(0.1)
-        return
-
-    def run(self):
-        try:
-            while True:
-                if self.detect_color_object():
-                    print("色物体を検出！近づきます")
-                    self.move_forward()
-                    sleep(SLEEP_INTERVAL)
-
-                    if self.detect_color_object():
-                        color_ratio = np.sum(
-                            cv2.inRange(
-                                cv2.cvtColor(self.cap.read()[1], cv2.COLOR_BGR2HSV),
-                                LOWER_COLOR1,
-                                UPPER_COLOR1,
-                            )
-                            > 0
-                        ) / (self.cap.read()[1].shape[0] * self.cap.read()[1].shape[1])
-                        if color_ratio > CLOSE_DISTANCE_THRESHOLD:
-                            print("近づきました！発射！！！")
-                            self.stop()
-                            self.launch()
-                            exit()
-                else:
-                    print("色物体が見つかりません。探索します")
-                    self.stop()
-                    self.rotate_left()
-                    sleep(0.02 * random.randint(1, 5))
-                    self.stop()
-
-        except KeyboardInterrupt:
-            print("プログラムを終了します")
-        finally:
-            self.stop()
-            self.cap.release()
-            cv2.destroyAllWindows()
+            if detected and centroid is not None:
+                if state != "tracking":
+                    state = "tracking"
+                    state_start_time = current_time
+                set_motor_speed(0.5, 0.5)
+                if area_ratio > 0.1 and (current_time - state_start_time >= 2.0):
+                    stop()
+                    launch()
+                    break
+            else:
+                if state not in ["search_rotate", "search_forward"]:
+                    state = "search_rotate"
+                    state_start_time = current_time
+                    rotation_direction = random.choice([1, -1])
+                if state == "search_rotate":
+                    if rotation_direction == 1:
+                        AIN1.on()
+                        AIN2.off()
+                        BIN1.off()
+                        BIN2.on()
+                    else:
+                        AIN1.off()
+                        AIN2.on()
+                        BIN1.on()
+                        BIN2.off()
+                    PWMA.value = 0.3
+                    PWMB.value = 0.3
+                    if current_time - state_start_time >= 1.5:
+                        state = "search_forward"
+                        state_start_time = current_time
+                elif state == "search_forward":
+                    set_motor_speed(0.4, 0.4)
+                    if current_time - state_start_time >= 2.0:
+                        state = "search_rotate"
+                        state_start_time = current_time
+                        rotation_direction = random.choice([1, -1])
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("プログラムを終了します")
+    finally:
+        stop()
+        cap.release()
+        cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
-    tracker = ColorObjectTracker()
-    tracker.run()
+    run()

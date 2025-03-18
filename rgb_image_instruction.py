@@ -1,3 +1,5 @@
+"""画像はRGBの3チャンネルの重ね合わせで実現されていることを理解するためのスクリプト（実際のカメラ画像を3チャンネルに分解することで理解を手助け）"""
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
