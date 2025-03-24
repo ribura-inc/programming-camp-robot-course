@@ -2,8 +2,8 @@ from time import sleep
 
 from gpiozero import OutputDevice
 
-motor_A_1 = OutputDevice(9)  # motor_A_1ピン
-motor_A_2 = OutputDevice(10)  # motor_A_2ピン
+motor_A_1 = OutputDevice(4)  # motor_A_1ピン
+motor_A_2 = OutputDevice(17)  # motor_A_2ピン
 
 
 print("モーター正転")

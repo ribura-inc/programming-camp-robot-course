@@ -1,10 +1,10 @@
 from time import sleep
 
-from gpiozero import AngularServo
+from gpiozero import AngularServo, DigitalOutputDevice
 from gpiozero.pins.pigpio import PiGPIOFactory
 
 # SG90のピン設定
-SERVO_PIN = 12  # SG90のピン番号
+SERVO_PIN = 4  # SG90のピン番号
 
 # おまじない
 factory = PiGPIOFactory()
@@ -19,8 +19,12 @@ servo = AngularServo(
     pin_factory=factory,
 )
 
+sleep(1.0)
 
+print("60")
 servo.angle = 60
 sleep(1.0)
-servo.angle = -60
+
+print("-60")
+servo.angle = -80
 sleep(1.0)

@@ -1,45 +1,27 @@
 from time import sleep
 
-from gpiozero import DigitalOutputDevice, PWMOutputDevice
+from gpiozero import Motor
 
 # モータードライバのピン設定
-motor_A_1 = DigitalOutputDevice(14)
-motor_A_2 = DigitalOutputDevice(15)
-motor_A_pwm = PWMOutputDevice(18)
-
-motor_B_1 = DigitalOutputDevice(8)
-motor_B_2 = DigitalOutputDevice(25)
-motor_B_pwm = PWMOutputDevice(7)
+motor_left = Motor(forward=15, backward=14)
+motor_right = Motor(forward=23, backward=18)
 
 
-print("前進します")
-motor_A_1.on()
-motor_A_2.off()
-motor_B_1.on()
-motor_B_2.off()
-motor_A_pwm.value = 1.0
-motor_B_pwm.value = 1.0
+print("前進")
+motor_left.forward()
+motor_right.forward()
 
-sleep(2)
+sleep(3)
 
 
-print("後進します")
-motor_A_1.off()
-motor_A_2.on()
-motor_B_1.off()
-motor_B_2.on()
-motor_A_pwm.value = 0.6
-motor_B_pwm.value = 0.6
+print("後進")
+motor_left.backward()
+motor_right.backward()
 
-sleep(2)
+sleep(3)
 
+print("斜め左")
+motor_left.forward(speed=0.5)
+motor_right.forward()
 
-print("どう動く？？")
-motor_A_1.on()
-motor_A_2.off()
-motor_B_1.on()
-motor_B_2.off()
-motor_A_pwm.value = 0.5
-motor_B_pwm.value = 1.0
-
-sleep(2)
+sleep(3)
