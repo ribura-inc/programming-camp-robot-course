@@ -1,6 +1,6 @@
 from time import sleep
 
-from gpiozero import AngularServo, DigitalOutputDevice
+from gpiozero import AngularServo
 from gpiozero.pins.pigpio import PiGPIOFactory
 
 # SG90のピン設定

@@ -3,35 +3,29 @@ import time
 
 import cv2
 import numpy as np
-from gpiozero import AngularServo, DigitalOutputDevice, PWMOutputDevice
+from gpiozero import AngularServo, PWMOutputDevice
 from gpiozero.pins.pigpio import PiGPIOFactory
 
 # 定数定義
 CAMERA_INDEX = 0
-SERVO_PIN = 12
-SERVO_MIN_ANGLE = 85
+SERVO_PIN = 4
+SERVO_MIN_ANGLE = -90
 SERVO_MAX_ANGLE = 0
 SERVO_MIN_PULSE = 0.5 / 1000
 SERVO_MAX_PULSE = 2.4 / 1000
 SERVO_FRAME_WIDTH = 1 / 50
 
-AIN1_PIN = 14
-AIN2_PIN = 15
-PWMA_PIN = 18
-BIN1_PIN = 8
-BIN2_PIN = 25
-PWMB_PIN = 7
 
-LOWER_HSV = np.array([30, 100, 100])  # TODO: 適切な値に変更
-UPPER_HSV = np.array([60, 255, 255])  # TODO: 適切な値に変更
+LOWER_HSV = np.array([65, 110, 105])  # TODO: 適切な値に変更
+UPPER_HSV = np.array([105, 200, 230])  # TODO: 適切な値に変更
 
 # モータードライバのピン設定
-AIN1 = DigitalOutputDevice(AIN1_PIN)
-AIN2 = DigitalOutputDevice(AIN2_PIN)
-PWMA = PWMOutputDevice(PWMA_PIN)
-BIN1 = DigitalOutputDevice(BIN1_PIN)
-BIN2 = DigitalOutputDevice(BIN2_PIN)
-PWMB = PWMOutputDevice(PWMB_PIN)
+# モータードライバのピン設定（PWM制御に変更）
+left_forward = PWMOutputDevice(15)
+left_backward = PWMOutputDevice(14)
+right_forward = PWMOutputDevice(23)
+right_backward = PWMOutputDevice(18)
+
 
 # サーボモーターの設定（射出用）
 factory = PiGPIOFactory()
@@ -68,22 +62,19 @@ def launch():
 
 def set_motor_speed(left_speed: float, right_speed: float):
     """左右モーターの速度を設定する."""
-    AIN1.off()
-    AIN2.on()
-    BIN1.off()
-    BIN2.on()
-    PWMA.value = max(0, min(1, left_speed))
-    PWMB.value = max(0, min(1, right_speed))
+    # 前進のみ対応（必要に応じて後退にも拡張可能）
+    left_forward.value = max(0, min(1, left_speed))
+    left_backward.value = 0
+    right_forward.value = max(0, min(1, right_speed))
+    right_backward.value = 0
 
 
 def stop():
     """モーターを停止する."""
-    AIN1.on()
-    AIN2.on()
-    BIN1.on()
-    BIN2.on()
-    PWMA.value = 0
-    PWMB.value = 0
+    left_forward.value = 0
+    left_backward.value = 0
+    right_forward.value = 0
+    right_backward.value = 0
 
 
 def detect_object():
@@ -117,13 +108,13 @@ def run():
     try:
         while True:
             current_time = time.time()
-            detected, centroid, area_ratio, frame = detect_object()
+            detected, centroid, area_ratio, _ = detect_object()
 
             if detected and centroid is not None:
                 if state != "tracking":
                     state = "tracking"
                     state_start_time = current_time
-                set_motor_speed(0.5, 0.5)
+                set_motor_speed(1.0, 1.0)
                 if area_ratio > 0.1 and (current_time - state_start_time >= 2.0):
                     stop()
                     launch()
@@ -133,24 +124,24 @@ def run():
                     state = "search_rotate"
                     state_start_time = current_time
                     rotation_direction = random.choice([1, -1])
+                # search_rotate 時の回転制御も PWM に置き換え
                 if state == "search_rotate":
                     if rotation_direction == 1:
-                        AIN1.on()
-                        AIN2.off()
-                        BIN1.off()
-                        BIN2.on()
+                        left_forward.value = 0.8
+                        left_backward.value = 0
+                        right_forward.value = 0
+                        right_backward.value = 0.8
                     else:
-                        AIN1.off()
-                        AIN2.on()
-                        BIN1.on()
-                        BIN2.off()
-                    PWMA.value = 0.3
-                    PWMB.value = 0.3
+                        left_forward.value = 0
+                        left_backward.value = 0.8
+                        right_forward.value = 0.8
+                        right_backward.value = 0
+
                     if current_time - state_start_time >= 1.5:
                         state = "search_forward"
                         state_start_time = current_time
                 elif state == "search_forward":
-                    set_motor_speed(0.4, 0.4)
+                    set_motor_speed(0.9, 0.9)
                     if current_time - state_start_time >= 2.0:
                         state = "search_rotate"
                         state_start_time = current_time

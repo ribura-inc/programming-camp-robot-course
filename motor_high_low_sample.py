@@ -2,23 +2,23 @@ from time import sleep
 
 from gpiozero import OutputDevice
 
-motor_A_1 = OutputDevice(4)  # motor_A_1ピン
-motor_A_2 = OutputDevice(17)  # motor_A_2ピン
+left_forward = OutputDevice(15)  # left_forwardピン
+left_backward = OutputDevice(14)  # left_backwardピン
 
 
 print("モーター正転")
-motor_A_1.on()
-motor_A_2.off()
+left_forward.on()
+left_backward.off()
 sleep(2)
 
 print("モーター逆転")
-motor_A_1.off()
-motor_A_2.on()
+left_forward.off()
+left_backward.on()
 sleep(2)
 
 print("モーター停止")
-motor_A_1.off()
-motor_A_2.off()
+left_forward.off()
+left_backward.off()
 sleep(2)
 
 
