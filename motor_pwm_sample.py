@@ -23,15 +23,15 @@ left_forward.value = 1.0
 left_backward.value = 0
 right_forward.value = 1.0
 right_backward.value = 0
-sleep(3)
+sleep(2)
 stop_all()
 
-print("後進（100%）")
+print("後進（60%）")
 left_forward.value = 0
-left_backward.value = 1.0
+left_backward.value = 0.6
 right_forward.value = 0
-right_backward.value = 1.0
-sleep(3)
+right_backward.value = 0.6
+sleep(2)
 stop_all()
 
 print("斜め左（左モーター50%, 右モーター100%）")

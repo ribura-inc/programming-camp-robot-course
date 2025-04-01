@@ -9,7 +9,6 @@ def nothing(x: int) -> None:
 
 def main() -> None:
     """リアルタイムでHSVの範囲を調整するUIを表示する."""
-    # DirectShowを指定してカメラを初期化（Windows環境の場合）
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("カメラが開けません")
@@ -36,7 +35,6 @@ def main() -> None:
             print("フレームの取得に失敗")
             break
 
-        # トラックバーから現在のHSV閾値を取得
         lower_h = cv2.getTrackbarPos("Lower H", "Trackbars")
         lower_s = cv2.getTrackbarPos("Lower S", "Trackbars")
         lower_v = cv2.getTrackbarPos("Lower V", "Trackbars")
@@ -47,18 +45,24 @@ def main() -> None:
         lower_bound = np.array([lower_h, lower_s, lower_v])
         upper_bound = np.array([upper_h, upper_s, upper_v])
 
-        # 画像をHSV空間に変換してマスク作成
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv, lower_bound, upper_bound)
         result = cv2.bitwise_and(frame, frame, mask=mask)
 
-        # original と result を横に結合
-        combined = np.hstack((frame, result))
+        # 最大輪郭と重心の描画（resultに）
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            largest_contour = max(contours, key=cv2.contourArea)
+            cv2.drawContours(result, [largest_contour], -1, (0, 255, 0), 2)
+            M = cv2.moments(largest_contour)
+            if M["m00"] != 0:
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+                cv2.circle(result, (cx, cy), 5, (0, 0, 255), -1)
 
-        # 結果を表示
+        combined = np.hstack((frame, result))
         cv2.imshow("Original & Result", combined)
 
-        # ESCキーで終了
         if cv2.waitKey(1) & 0xFF == 27:
             break
 

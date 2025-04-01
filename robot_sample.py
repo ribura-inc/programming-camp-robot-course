@@ -31,8 +31,6 @@ right_backward = PWMOutputDevice(18)
 factory = PiGPIOFactory()
 servo = AngularServo(
     SERVO_PIN,
-    min_angle=SERVO_MIN_ANGLE,
-    max_angle=SERVO_MAX_ANGLE,
     initial_angle=SERVO_MAX_ANGLE,
     min_pulse_width=SERVO_MIN_PULSE,
     max_pulse_width=SERVO_MAX_PULSE,
@@ -54,10 +52,10 @@ def launch():
     """射出動作を実施する."""
     print("launch")
     servo.angle = SERVO_MIN_ANGLE
-    time.sleep(0.2)
+    time.sleep(0.4)
     print("reset")
     servo.angle = SERVO_MAX_ANGLE
-    time.sleep(0.1)
+    time.sleep(0.2)
 
 
 def set_motor_speed(left_speed: float, right_speed: float):
@@ -81,6 +79,7 @@ def detect_object():
     """カメラ画像から物体を検出する."""
     ret, frame = cap.read()
     if not ret:
+        print("Failed to read frame.")
         return False, None, 0.0, np.array([])
 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -93,6 +92,8 @@ def detect_object():
     area = cv2.contourArea(largest_contour)
     frame_area = frame.shape[0] * frame.shape[1]
     area_ratio = area / frame_area
+    if area_ratio < 0.01:
+        return False, None, area_ratio, frame
 
     M = cv2.moments(largest_contour)
     if M["m00"] == 0:
@@ -111,6 +112,7 @@ def run():
             detected, centroid, area_ratio, _ = detect_object()
 
             if detected and centroid is not None:
+                print(detected, centroid, area_ratio)
                 if state != "tracking":
                     state = "tracking"
                     state_start_time = current_time
@@ -146,13 +148,12 @@ def run():
                         state = "search_rotate"
                         state_start_time = current_time
                         rotation_direction = random.choice([1, -1])
-            time.sleep(0.1)
+            time.sleep(0.02)
     except KeyboardInterrupt:
         print("プログラムを終了します")
     finally:
-        stop()
         cap.release()
-        cv2.destroyAllWindows()
+        stop()
 
 
 if __name__ == "__main__":

@@ -97,18 +97,25 @@ void setup() {
 //
 // loop() - 逃げるロボットのメインループ
 //
-void loop() {
-  updateSensors();
-  int command = determineSafeDirection();
-  if (command == -2) {
-    rightSpin(180);
-    delay(200);
-  } else {
-    move(command, 130);
-  }
-  delay(50);
-}
+// void loop() {
+//   updateSensors();
+//   int command = determineSafeDirection();
+//   if (command == -2) {
+//     rightSpin(180);
+//     delay(200);
+//   } else {
+//     move(command, 130);
+//   }
+//   delay(50);
+// }
 
+void loop() {
+  int randomDir = random(0, 360);
+  move(randomDir, 130);
+  delay(500);j
+  stop();
+  delay(1000);
+}
 
 
 //
