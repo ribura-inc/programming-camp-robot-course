@@ -41,6 +41,9 @@ servo.angle = SERVO_MAX_ANGLE
 
 # カメラ初期化
 cap = cv2.VideoCapture(CAMERA_INDEX)
+if not cap.isOpened():
+    print("Failed to open camera.")
+    exit(1)
 
 # 状態管理用変数
 state = "search_rotate"
@@ -79,8 +82,8 @@ def detect_object():
     """カメラ画像から物体を検出する."""
     ret, frame = cap.read()
     if not ret:
-        print("Failed to read frame.")
-        return False, None, 0.0, np.array([])
+        print("Failed to open camera.")
+        exit(1)
 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hsv, LOWER_HSV, UPPER_HSV)
@@ -152,7 +155,7 @@ def run():
     except KeyboardInterrupt:
         print("プログラムを終了します")
     finally:
-        cap.release()
+        cap.release()  # 注意：これを忘れると、USBの抜き差しが必要になってしまう！！
         stop()
 
 
