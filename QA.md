@@ -13,6 +13,18 @@
 
 ネーム解決のキャッシュが原因ではないでしょうか？ 対応方法見つけてないです、、
 
+## Q. ssh接続できない
+
+```bash
+PS C:\Users\ryout\OneDrive\デスクトップ\programing_camp> scp robot_work_sak.py  pi@raspi-2.local:/home/pi/
+ssh: Could not resolve hostname raspi-2.local: \202\273\202\314\202\346\202\244\202\310\203z\203X\203g\202\315\225s\226\276\202\305\202\267\201B
+C:\WINDOWS\System32\OpenSSH\scp.exe: Connection closed
+```
+
+- 同じWiFiに接続していますか？
+- 先に `ping` してみるとうまくいくケースが？？（理由わかってない）
+- `ipconfig /flushdns` でDNSキャッシュをクリアしてみる？
+
 ---
 
 ※ 過去質問（対策済み）

@@ -9,7 +9,7 @@ def nothing(x: int) -> None:
 
 def main() -> None:
     """リアルタイムでHSVの範囲を調整するUIを表示する."""
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     if not cap.isOpened():
         print("カメラが開けません")
         return
@@ -59,6 +59,19 @@ def main() -> None:
                 cx = int(M["m10"] / M["m00"])
                 cy = int(M["m01"] / M["m00"])
                 cv2.circle(result, (cx, cy), 5, (0, 0, 255), -1)
+
+            area = cv2.contourArea(largest_contour)
+            frame_area = frame.shape[0] * frame.shape[1]
+            area_ratio = area / frame_area
+            cv2.putText(
+                result,
+                f"Area ratio: {area_ratio:.2f}",
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                2,
+            )
 
         combined = np.hstack((frame, result))
         cv2.imshow("Original & Result", combined)
